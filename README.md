@@ -4,122 +4,96 @@
 
 Real-time multi-stream video analytics: vehicle detection, tracking, line-crossing counts and zone-intrusion alerts with YOLO + ByteTrack.
 
-<!-- Add a 10-20 second demo GIF here (annotated video with counts and IDs) -->
-![demo](docs/demo.gif)
+**Status: work in progress.** The single-stream detection and tracking baseline is done and measured. Counting, evaluation, multi-stream support and alerts are next (see the roadmap).
 
-## What it does
+## What works today
 
-- Detects vehicles with a pretrained YOLO model and tracks them across frames with ByteTrack.
-- Counts vehicles crossing a virtual line, per direction.
-- Raises alerts when an object enters a defined zone, and saves a snapshot of each event.
-- Runs several video streams at once and reports per-stream performance.
-- Shows counts over time and recent alerts in a small dashboard.
+- Detects vehicles (car, motorcycle, bus, truck) with a pretrained YOLO model.
+- Tracks them across frames with ByteTrack, so each vehicle gets an ID.
+- Saves an annotated video and a text report with the settings, hardware and per-stage timing.
 
-## Architecture
+## Baseline results (Week 1)
 
-<!-- Add a simple diagram: video source -> decode (thread) -> queue -> detect -> track -> counting/alerts -> storage -> dashboard -->
-![architecture](docs/architecture.png)
+Single stream, pretrained `yolo11n.pt`, 640 px inference, confidence 0.35, ByteTrack, PyTorch (no export or optimization yet).
 
-## Results
+**Hardware and software:** NVIDIA GeForce GTX 1660 Ti Max-Q (6 GB, laptop), Python 3.14, PyTorch 2.15 (CUDA 13.4 build).
+**Test clip:** 1280x720 at 30 FPS, 201 frames (about 7 seconds), fixed elevated camera on a multi-lane road.
 
-All numbers below are measured on my own labeled test clips. Hardware: `<GPU model, CPU, RAM>`.
+| Metric | Result |
+|--------|--------|
+| Steady-state speed (after 10 warm-up frames) | about 31 FPS end to end (about 32 ms per frame) |
+| Speed including warm-up | 5.5 to 12.4 FPS (the first frames pay for CUDA initialization; shorter on the second run) |
 
-### Counting accuracy
+Per-frame time breakdown (ms, second run):
 
-| Clip | Conditions | Ground truth | Predicted | Error |
-|------|-----------|--------------|-----------|-------|
-| `<clip 1>` | `<day / clear>` | `<n>` | `<n>` | `<%>` |
-| `<clip 2>` | `<crowded>` | `<n>` | `<n>` | `<%>` |
-| `<clip 3>` | `<night / rain>` | `<n>` | `<n>` | `<%>` |
+| Stage | ms |
+|-------|----|
+| Preprocess | 1.8 |
+| Inference | 14.4 |
+| Postprocess | 2.4 |
+| Draw boxes + write video | 10.6 |
+| Decode + tracking + other | 2.6 |
 
-### Performance
+The detector is not the bottleneck: about a third of the frame time goes to drawing and encoding the annotated output, which a deployed pipeline would not do on every frame. Measuring a headless mode is part of Week 3.
 
-| Setup | Streams | FPS per stream | Latency per frame |
-|-------|---------|----------------|-------------------|
-| PyTorch baseline | 1 | `<fps>` | `<ms>` |
-| + threaded decoding | 1 | `<fps>` | `<ms>` |
-| ONNX | 1 | `<fps>` | `<ms>` |
-| ONNX | `<2-4>` | `<fps>` | `<ms>` |
+The full report from each run is saved to `eval/baseline_week1.txt`.
 
-Per-stage timing (decode / detect / track / draw): `<fill in from profiling>`
+## Failure analysis so far
 
-## Failure analysis
+These are observations from one clip and will be turned into measured results during the evaluation phase.
 
-What goes wrong, why, and what I would do about it.
+| Observation | Likely cause | To investigate |
+|-------------|--------------|----------------|
+| In a sample frame, only about 4 vehicles have boxes while several other clearly visible vehicles (vans, a gray sedan in the foreground) have none | Heavy motion blur, close camera, very large vehicles, small `yolo11n` model, confidence threshold 0.35 | Larger model (`yolo11s`/`yolo11m`), lower threshold, a clip with less blur |
+| 103 unique track IDs over a 7-second clip, with IDs already above 30 early in the clip | ID switches and fragmented tracks when detections drop out | Track-length statistics, tracker parameters, ground-truth comparison |
 
-| Failure case | Cause | Possible fix |
-|--------------|-------|--------------|
-| `<ID switches in occlusion>` | `<cause>` | `<fix>` |
-| `<double counting near the line>` | `<cause>` | `<fix>` |
-| `<missed detections at night>` | `<cause>` | `<fix>` |
+## Roadmap
+
+- [x] Baseline: YOLO detection + ByteTrack on one video, with timing report
+- [ ] Counting line with per-direction counts and an event CSV
+- [ ] Evaluation on labeled clips (count error, failure cases in day, crowded and night or rain conditions)
+- [ ] Real-time performance: threaded decoding, headless mode, ONNX export, FPS comparison
+- [ ] Multi-stream processing (2 to 4 streams) with per-stream FPS
+- [ ] Zone-intrusion alerts with saved snapshots
+- [ ] Dashboard, configuration file, Docker, tests
 
 ## Getting started
 
 ```bash
-git clone https://github.com/<your-username>/streamsight.git
+git clone https://github.com/rufaida-kassem01/streamsight.git
 cd streamsight
 python -m venv .venv
 # Windows: .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+```
+
+Install PyTorch first, using the command from https://pytorch.org/get-started/locally/ that matches your CUDA version (or the CPU build), then the rest:
+
+```bash
+pip install ultralytics opencv-python
 ```
 
 Run on a video file:
 
 ```bash
-python -m src.pipeline --config configs/default.yaml --source path/to/video.mp4
+python src/track_video.py --source data/traffic.mp4
 ```
 
-Run with Docker:
-
-```bash
-docker build -t streamsight .
-docker run --rm streamsight
-```
-
-## Configuration
-
-Zones, counting lines, thresholds and stream sources are set in `configs/`. Example:
-
-```yaml
-sources:
-  - path/to/video1.mp4
-model:
-  weights: yolo-weights-file
-  confidence: 0.35
-counting_line:
-  start: [0, 400]
-  end: [1280, 400]
-zones:
-  - name: restricted-area
-    polygon: [[100, 100], [500, 100], [500, 400], [100, 400]]
-```
+Useful options: `--weights yolo11s.pt` (larger model), `--conf 0.25`, `--imgsz 960`, `--show` (live preview, press `q` to quit), `--out`, `--report`.
 
 ## Project structure
 
 ```
 streamsight/
 ├── README.md
-├── configs/          # zones, thresholds, stream sources
 ├── src/
-│   ├── detect.py
-│   ├── track.py
-│   ├── counting.py
-│   ├── alerts.py
-│   ├── pipeline.py   # queues, threads, multi-stream
-│   └── dashboard.py
-├── eval/             # ground truth, scripts, results
-├── tests/
-├── Dockerfile
-└── requirements.txt
+│   └── track_video.py    # detection + tracking baseline with timing report
+├── eval/                 # reports and, later, ground truth and results
+├── requirements.txt
+└── .gitignore            # excludes the venv, videos and model weights
 ```
-
-## Limitations and next steps
-
-- `<known limitations, stated honestly>`
-- `<what you would improve next: e.g. fine-tuning on local data, cross-camera re-identification, heatmaps>`
 
 ## Data and licenses
 
-- Test videos: `<source and license>`
-- Model weights: `<source and license>`
-- Code license: `<e.g. MIT>`
+- Test video: stock footage, not included in the repo (`data/` is git-ignored). Source and license: *add the clip's source and license here*.
+- Model weights: pretrained Ultralytics YOLO weights, downloaded on first run.
+- Code license: *add a license*.

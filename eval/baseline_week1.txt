@@ -1,0 +1,17 @@
+StreamSight baseline report
+Date:       2026-11-07 19:54
+Hardware:   NVIDIA GeForce GTX 1660 Ti with Max-Q Design | CPU: Intel64 Family 6 Model 158 Stepping 10, GenuineIntel
+Software:   Python 3.14.8 | torch 2.15.0+cu134 (CUDA 13.4) | ultralytics 8.4.203
+Model:      yolo11n.pt | imgsz 640 | conf 0.35 | tracker bytetrack | classes [2, 3, 5, 7]
+Input:      traffic.mp4 | 1280x720 @ 30.0 FPS | 201 frames
+
+Processed 201 frames in 25.1s -> 8.0 FPS (including warm-up)
+Steady state (after 10 warm-up frames): 28.7 FPS end to end (34.8 ms per frame)
+Average per-frame time after warm-up (ms):
+  preprocess              1.9
+  inference              16.2
+  postprocess             3.2
+  draw+write             10.6
+  decode+track+other      2.9
+Unique track IDs seen: 103 (not a vehicle count; IDs can switch)
+Annotated video: outputs/annotated.mp4
