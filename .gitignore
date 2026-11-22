@@ -231,6 +231,7 @@ data/*
 venv/*
 *.h5
 *.pth
+!models/resnet18_cifar10.pth
 *.pt
 *.keras
 *.mp4
