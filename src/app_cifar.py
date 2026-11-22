@@ -60,10 +60,10 @@ def main() -> None:
         DEVICE,
     )
 
-    st.subheader("Predictions")
-    for label, score in predictions:
-        st.write(f"{label}: **{score:.1%}**")
-
+    if st.button("What is this?"):
+        # Display the top prediction
+        top_prediction = predictions[0]
+        st.write(f"This is a/an {top_prediction[0]}")
 
 if __name__ == "__main__":
     main()
