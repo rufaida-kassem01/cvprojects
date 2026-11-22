@@ -44,7 +44,7 @@ def main() -> None:
 
     uploaded_file = st.file_uploader(
         "Upload an image",
-        type=["jpg", "jpeg", "png"],
+        type=["jpg", "jpeg", "png", "webp", "bmp", "tiff"],
     )
     if uploaded_file is None:
         return
