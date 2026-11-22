@@ -221,3 +221,17 @@ __marimo__/
 
 #event* folders
 event*/
+
+# data folder
+data/*
+# zip files
+*.zip
+
+# venv folder
+venv/*
+*.h5
+*.pth
+*.pt
+*.keras
+*.mp4
+outputs/

@@ -80,6 +80,14 @@ python src/track_video.py --source data/traffic.mp4
 
 Useful options: `--weights yolo11s.pt` (larger model), `--conf 0.25`, `--imgsz 960`, `--show` (live preview, press `q` to quit), `--out`, `--report`.
 
+Train a torchvision MobileNet on the labeled UCSD traffic clips:
+
+```bash
+python src/train_mobilenet_ucsd.py --architecture mobilenet_v2 --epochs 10 --frames-per-clip 8
+```
+
+The script uses a clip-level split (two clips per class for training and one held out per class for testing), so frames from the same video cannot leak between splits. It saves the checkpoint to `outputs/mobilenet_ucsd.pth` and metrics to `eval/mobilenet_ucsd.json`.
+
 ## Project structure
 
 ```

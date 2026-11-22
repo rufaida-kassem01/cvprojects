@@ -1,0 +1,108 @@
+{
+  "device": "cpu",
+  "architecture": "mobilenet_v2",
+  "train_clips": [
+    "heavy_cctv052x2004080516x01646.mp4",
+    "heavy_cctv052x2004080615x00032.mp4",
+    "light_cctv052x2004080609x01866.mp4",
+    "light_cctv052x2004080611x01898.mp4",
+    "medium_cctv052x2004080518x01672.mp4",
+    "medium_cctv052x2004080617x00075.mp4"
+  ],
+  "test_clips": [
+    "heavy_cctv052x2004080617x00066.mp4",
+    "light_cctv052x2004080613x00016.mp4",
+    "medium_cctv052x2004080618x00079.mp4"
+  ],
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 1.0660598278045654,
+      "train_accuracy": 0.5208333333333334
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.8975024024645487,
+      "train_accuracy": 0.8541666666666666
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.7690287232398987,
+      "train_accuracy": 0.9791666666666666
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.6722616751988729,
+      "train_accuracy": 0.9583333333333334
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.5766673485438029,
+      "train_accuracy": 0.9791666666666666
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.49006424347559613,
+      "train_accuracy": 1.0
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.46090643604596454,
+      "train_accuracy": 1.0
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.43647557497024536,
+      "train_accuracy": 1.0
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.43073077003161114,
+      "train_accuracy": 1.0
+    },
+    {
+      "epoch": 10,
+      "train_loss": 0.4171219964822133,
+      "train_accuracy": 1.0
+    }
+  ],
+  "clip_accuracy": 0.3333333333333333,
+  "frame_accuracy": 0.26666666666666666,
+  "clips": [
+    {
+      "clip": "heavy_cctv052x2004080617x00066.mp4",
+      "true_label": "heavy",
+      "predicted_label": "medium",
+      "correct": false
+    },
+    {
+      "clip": "light_cctv052x2004080613x00016.mp4",
+      "true_label": "light",
+      "predicted_label": "light",
+      "correct": true
+    },
+    {
+      "clip": "medium_cctv052x2004080618x00079.mp4",
+      "true_label": "medium",
+      "predicted_label": "light",
+      "correct": false
+    }
+  ],
+  "confusion_matrix": [
+    [
+      0,
+      0,
+      1
+    ],
+    [
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      1,
+      0
+    ]
+  ]
+}

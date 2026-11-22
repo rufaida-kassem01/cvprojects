@@ -12,6 +12,7 @@ report with settings, hardware, timing and counts (--report).
 import argparse
 import csv
 import datetime
+import math
 import os
 import platform
 import statistics
@@ -64,6 +65,9 @@ def main():
                         help="tracker config: a built-in name or the path to your own yaml")
     parser.add_argument("--line", default="0,0.6,1,0.6",
                         help="counting line as x1,y1,x2,y2 fractions of the frame (default: horizontal at 60%% height)")
+    parser.add_argument("--max-step-ratio", type=float, default=0.0,
+                        help="if > 0, do not count a crossing when the vehicle jumped further than this many "
+                             "box sizes between two frames (likely an ID switch); logged as rejected_jump")
     parser.add_argument("--preview-line", action="store_true",
                         help="save outputs/line_preview.jpg with the line drawn, then exit")
     parser.add_argument("--out", default="outputs/annotated.mp4")
@@ -140,7 +144,9 @@ def main():
             ids = result.boxes.id.int().tolist()
             centres = result.boxes.xywh[:, :2].tolist()
             classes = result.boxes.cls.int().tolist()
-            for tid, (cx, cy), cls in zip(ids, centres, classes):
+            confs = result.boxes.conf.tolist()
+            sizes = result.boxes.xywh[:, 2:].tolist()
+            for tid, (cx, cy), cls, conf, (bw, bh) in zip(ids, centres, classes, confs, sizes):
                 unique_ids.add(tid)
                 first_seen.setdefault(tid, frames)
                 last_seen[tid] = frames
@@ -152,10 +158,16 @@ def main():
                         and side != prev_side and tid not in counted
                         and segments_intersect(prev_point, point, line_a, line_b)):
                     direction = "dir_1" if prev_side < 0 and side > 0 else "dir_2"
-                    counts[direction] += 1
-                    counted.add(tid)
-                    events.append((frames, round(frames / fps_in, 2), tid, result.names[cls], direction,
-                                   round(cx), round(cy)))
+                    step = math.hypot(point[0] - prev_point[0], point[1] - prev_point[1])
+                    age = frames - first_seen[tid] + 1
+                    status = "counted"
+                    if args.max_step_ratio > 0 and step > args.max_step_ratio * max(bw, bh):
+                        status = "rejected_jump"
+                    if status == "counted":
+                        counts[direction] += 1
+                        counted.add(tid)
+                    events.append((frames, round(frames / fps_in, 2), tid, result.names[cls], direction, status,
+                                   round(cx), round(cy), round(step), age, round(bw), round(bh), round(conf, 2)))
                 last_pos[tid] = point
                 if side != 0:
                     last_side[tid] = side
@@ -189,7 +201,8 @@ def main():
         os.makedirs(os.path.dirname(args.events) or ".", exist_ok=True)
         with open(args.events, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
-            w.writerow(["frame", "time_s", "track_id", "class", "direction", "x", "y"])
+            w.writerow(["frame", "time_s", "track_id", "class", "direction", "status", "x", "y",
+                        "step_px", "track_age_frames", "box_w", "box_h", "conf"])
             w.writerows(events)
 
     # ---- Build the report (printed and optionally saved) ----
@@ -229,13 +242,16 @@ def main():
     lines.append(f"Line crossings: dir_1 {counts['dir_1']} | dir_2 {counts['dir_2']} | total {sum(counts.values())}")
     lines.append("  (dir_1 = crossing from the negative to the positive side of the line a->b; "
                  "for the default horizontal line that is moving down the frame, dir_2 is moving up)")
+    rejected = sum(1 for e in events if e[5] != "counted")
+    if rejected:
+        lines.append(f"Rejected crossings (jump filter, --max-step-ratio {args.max_step_ratio}): {rejected}")
     lines.append(f"Unique track IDs seen: {len(unique_ids)} (not a vehicle count; IDs can switch)")
     if lengths:
         lines.append(f"Track length (frames): median {statistics.median(lengths):.0f}, "
                      f"{short} of {len(lengths)} tracks shorter than {SHORT_TRACK_FRAMES} frames")
     lines.append(f"Annotated video: {args.out}")
     if args.events:
-        lines.append(f"Events CSV: {args.events} ({len(events)} events)")
+        lines.append(f"Events CSV: {args.events} ({len(events)} rows)")
 
     print()
     print("\n".join(lines))
