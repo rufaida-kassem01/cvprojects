@@ -48,5 +48,4 @@ def load_model_for_inference(checkpoint_path, device='cpu'):
     return model, class_names, inference_transform
 
 # Verification block to test loading the model
-inference_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-loaded_model, labels, transform = load_model_for_inference(CHECKPOINT, inference_device)
+loaded_model, labels, transform = load_model_for_inference(CHECKPOINT, DEVICE)
